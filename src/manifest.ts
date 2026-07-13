@@ -223,5 +223,3 @@ export const manifest = defineManifest<Record<never, never>, BlobStore>()({
 		}
 	]
 });
-
-export default manifest;
