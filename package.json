@@ -1,6 +1,6 @@
 {
   "name": "@absolutejs/blob",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Object storage substrate for the AbsoluteJS PaaS. One BlobStore interface (put/get/getStream/head/delete/list/presign) with adapters for local disk (dev) and S3-compatible services (AWS S3, Cloudflare R2, Backblaze B2, MinIO). Narrow S3ClientLike keeps the AWS SDK out as a hard dep.",
   "repository": {
     "type": "git",
