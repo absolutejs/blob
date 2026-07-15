@@ -226,9 +226,23 @@ export const s3BlobStore = (options: S3BlobStoreOptions): BlobStore => {
 		putOptions: PutOptions = {}
 	): Promise<BlobObject> => {
 		validateKey(key);
-		const bytes = await collectBody(body);
+		let size = 0;
+		let uploadBody: S3PutInput['Body'];
+		if (body instanceof ReadableStream) {
+			const counter = new TransformStream<Uint8Array, Uint8Array>({
+				transform(chunk, controller) {
+					size += chunk.byteLength;
+					controller.enqueue(chunk);
+				}
+			});
+			uploadBody = body.pipeThrough(counter);
+		} else {
+			const bytes = await collectBody(body);
+			size = bytes.byteLength;
+			uploadBody = bytes;
+		}
 		const input: S3PutInput = {
-			Body: bytes,
+			Body: uploadBody,
 			Bucket: bucket,
 			Key: key
 		};
@@ -246,7 +260,7 @@ export const s3BlobStore = (options: S3BlobStoreOptions): BlobStore => {
 		const result: BlobObject = {
 			key,
 			lastModified: Date.now(),
-			size: bytes.length
+			size
 		};
 		if (output.ETag !== undefined) result.etag = output.ETag.replace(/^"|"$/g, '');
 		if (putOptions.contentType !== undefined) {

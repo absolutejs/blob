@@ -11,9 +11,6 @@
  * constructor change.
  *
  * Out-of-scope (deliberate):
- *   - Multipart-upload streams above ~100 MB. Use the underlying
- *     SDK directly if you need them; this primitive is for the
- *     "one file at a time" 95% case.
  *   - CDN integration. The presign URLs from S3-compat stores work
  *     for direct browser download; CDN cache invalidation is the
  *     CDN's job.

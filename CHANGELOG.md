@@ -1,5 +1,20 @@
 # @absolutejs/blob changelog
 
+## 0.2.0 — 2026-07-15
+
+### Added
+
+- Add `@absolutejs/blob/aws-s3`, official AWS SDK wiring for the shared S3
+  adapter. Streaming writes use `@aws-sdk/lib-storage` multipart uploads and
+  work against AWS S3, DigitalOcean Spaces, R2, B2, MinIO, and other
+  S3-compatible providers.
+
+### Changed
+
+- Stream `ReadableStream` uploads through both local and S3 stores instead of
+  collecting the entire body in memory. Local writes remain atomic and compute
+  their ETag incrementally; S3 writes count bytes while preserving backpressure.
+
 ## 0.1.0 — 2026-05-31
 
 Initial release. Closes G11 from the second-pass PaaS audit — the

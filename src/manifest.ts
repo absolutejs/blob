@@ -67,6 +67,11 @@ export const manifest = defineManifest<Record<never, never>, BlobStore>()({
 						reason: 'S3 wire protocol client'
 					},
 					{
+						name: '@aws-sdk/lib-storage',
+						range: '^3.0.0',
+						reason: 'Bounded multipart streaming uploads'
+					},
+					{
 						name: '@aws-sdk/s3-request-presigner',
 						range: '^3.0.0',
 						reason: 'Direct-to-browser upload/download URLs'
@@ -98,48 +103,26 @@ export const manifest = defineManifest<Record<never, never>, BlobStore>()({
 			title: 'Cloud storage (AWS S3, Cloudflare R2, Backblaze B2, MinIO)',
 			wiring: {
 				code: [
-					'(() => {',
-					'\tconst aws = new S3Client({',
+					'awsS3BlobStore({',
+					'\tbucket: ${settings.bucket},',
+					'\tclient: new S3Client({',
 					'\t\tcredentials: {',
 					'\t\t\taccessKeyId: ${env.S3_ACCESS_KEY_ID} ?? "",',
 					'\t\t\tsecretAccessKey: ${env.S3_SECRET_ACCESS_KEY} ?? ""',
 					'\t\t},',
 					'\t\tendpoint: ${settings.endpoint},',
 					'\t\tregion: ${settings.region}',
-					'\t});',
-					'\tconst client: S3ClientLike = {',
-					'\t\tdeleteObject: (i) => aws.send(new DeleteObjectCommand(i as never)) as never,',
-					'\t\tgetObject: (i) => aws.send(new GetObjectCommand(i as never)) as never,',
-					'\t\theadObject: (i) => aws.send(new HeadObjectCommand(i as never)) as never,',
-					'\t\tlistObjectsV2: (i) => aws.send(new ListObjectsV2Command(i as never)) as never,',
-					'\t\tpresignGetObject: (i, o) => getSignedUrl(aws as never, new GetObjectCommand(i as never), o),',
-					'\t\tpresignPutObject: (i, o) => getSignedUrl(aws as never, new PutObjectCommand(i as never), o),',
-					'\t\tputObject: (i) => aws.send(new PutObjectCommand(i as never)) as never',
-					'\t};',
-					'\treturn s3BlobStore({ bucket: ${settings.bucket}, client });',
-					'})()'
+					'\t})',
+					'})'
 				].join('\n'),
 				imports: [
 					{
 						from: '@aws-sdk/client-s3',
-						names: [
-							'DeleteObjectCommand',
-							'GetObjectCommand',
-							'HeadObjectCommand',
-							'ListObjectsV2Command',
-							'PutObjectCommand',
-							'S3Client'
-						]
-					},
-					{ from: '@aws-sdk/s3-request-presigner', names: ['getSignedUrl'] },
-					{
-						from: '@absolutejs/blob/s3',
-						names: ['s3BlobStore']
+						names: ['S3Client']
 					},
 					{
-						from: '@absolutejs/blob/s3',
-						names: ['S3ClientLike'],
-						typeOnly: true
+						from: '@absolutejs/blob/aws-s3',
+						names: ['awsS3BlobStore']
 					}
 				]
 			}

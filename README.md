@@ -1,7 +1,7 @@
 # @absolutejs/blob
 
-Object storage substrate for the AbsoluteJS PaaS. One `BlobStore`
-interface, multiple adapters, no hard SDK dependency.
+Object storage substrate for AbsoluteJS. One `BlobStore` interface, multiple
+adapters, and bounded streaming for large artifacts.
 
 ```ts
 const store: BlobStore = /* localBlobStore(...) | s3BlobStore(...) */;
@@ -16,6 +16,7 @@ const url = await store.presign('users/42/avatar.png', { ttlSeconds: 900 });
 | --- | --- |
 | `@absolutejs/blob/local` | Filesystem (dev / single-host prod / tests) |
 | `@absolutejs/blob/s3` | AWS S3, Cloudflare R2, Backblaze B2, MinIO, Wasabi, Tigris — any S3-compatible HTTP API |
+| `@absolutejs/blob/aws-s3` | Official AWS SDK wiring, including multipart streaming uploads |
 
 Both implement the same `BlobStore` interface — swap providers with
 one constructor change.
@@ -38,31 +39,18 @@ dev.
 ## S3 (any S3-compatible service)
 
 ```ts
-import {
-  S3Client,
-  PutObjectCommand,
-  GetObjectCommand,
-  HeadObjectCommand,
-  DeleteObjectCommand,
-  ListObjectsV2Command,
-} from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { s3BlobStore, type S3ClientLike } from '@absolutejs/blob/s3';
+import { S3Client } from '@aws-sdk/client-s3';
+import { awsS3BlobStore } from '@absolutejs/blob/aws-s3';
 
 const aws = new S3Client({ region: 'us-east-1' });
 
-const client: S3ClientLike = {
-  putObject:      (i) => aws.send(new PutObjectCommand(i as never)) as never,
-  getObject:      (i) => aws.send(new GetObjectCommand(i as never)) as never,
-  headObject:     (i) => aws.send(new HeadObjectCommand(i as never)) as never,
-  deleteObject:   (i) => aws.send(new DeleteObjectCommand(i as never)) as never,
-  listObjectsV2:  (i) => aws.send(new ListObjectsV2Command(i as never)) as never,
-  presignGetObject: (i, o) => getSignedUrl(aws as never, new GetObjectCommand(i as never), o),
-  presignPutObject: (i, o) => getSignedUrl(aws as never, new PutObjectCommand(i as never), o),
-};
-
-const blobs = s3BlobStore({ client, bucket: 'my-bucket' });
+const blobs = awsS3BlobStore({ bucket: 'my-bucket', client: aws });
 ```
+
+`awsS3BlobStore` uses the official SDK command clients and
+`@aws-sdk/lib-storage` multipart uploads. Streams are never materialized as one
+control-plane buffer. The lower-level `s3BlobStore` and `S3ClientLike` remain
+available for custom clients.
 
 ### Cloudflare R2
 

@@ -29,9 +29,11 @@ import {
 	unlink,
 	writeFile
 } from 'node:fs/promises';
-import { createReadStream, type ReadStream } from 'node:fs';
+import { createReadStream, createWriteStream, type ReadStream } from 'node:fs';
 import { dirname, join, relative, sep } from 'node:path';
-import { Readable } from 'node:stream';
+import { Readable, Transform } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
+import type { ReadableStream as NodeReadableStream } from 'node:stream/web';
 import {
 	BlobError,
 	collectBody,
@@ -68,9 +70,6 @@ const join_ = (root: string, key: string): string => {
 	// segments is safe.
 	return join(root, ...key.split('/'));
 };
-
-const md5Hex = (bytes: Uint8Array): string =>
-	createHash('md5').update(bytes).digest('hex');
 
 const readMeta = async (
 	bodyPath: string
@@ -144,10 +143,36 @@ export const localBlobStore = (
 		const bodyPath = join_(options.root, key);
 		await mkdir(dirname(bodyPath), { recursive: true });
 
-		const bytes = await collectBody(body);
 		const tempPath = `${bodyPath}.tmp.${process.pid}.${Math.random().toString(36).slice(2)}`;
-		await writeFile(tempPath, bytes, { mode });
-		await rename(tempPath, bodyPath);
+		const hash = createHash('md5');
+		let size = 0;
+		try {
+			if (body instanceof ReadableStream) {
+				const observe = new Transform({
+					transform(chunk: Buffer, _encoding, callback) {
+						size += chunk.byteLength;
+						hash.update(chunk);
+						callback(null, chunk);
+					}
+				});
+				await pipeline(
+					Readable.fromWeb(
+						body as unknown as NodeReadableStream<Uint8Array>
+					),
+					observe,
+					createWriteStream(tempPath, { mode })
+				);
+			} else {
+				const bytes = await collectBody(body);
+				size = bytes.byteLength;
+				hash.update(bytes);
+				await writeFile(tempPath, bytes, { mode });
+			}
+			await rename(tempPath, bodyPath);
+		} catch (error) {
+			await unlink(tempPath).catch(() => undefined);
+			throw error;
+		}
 
 		const meta: StoredMetadata = {};
 		if (putOptions.contentType !== undefined) {
@@ -167,10 +192,10 @@ export const localBlobStore = (
 		}
 
 		const stored: BlobObject = {
-			etag: md5Hex(bytes),
+			etag: hash.digest('hex'),
 			key,
 			lastModified: Date.now(),
-			size: bytes.length
+			size
 		};
 		if (putOptions.contentType !== undefined) {
 			stored.contentType = putOptions.contentType;

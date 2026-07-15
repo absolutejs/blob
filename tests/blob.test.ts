@@ -112,6 +112,23 @@ describe('localBlobStore', () => {
 		expect(bytes).toEqual(new TextEncoder().encode('Hello, world'));
 	});
 
+	test('streams segmented writes while computing size and ETag', async () => {
+		const source = new ReadableStream<Uint8Array>({
+			start(controller) {
+				controller.enqueue(new TextEncoder().encode('large '));
+				controller.enqueue(new TextEncoder().encode('artifact'));
+				controller.close();
+			}
+		});
+		const result = await store.put('segmented.tgz', source);
+
+		expect(result.size).toBe(14);
+		expect(result.etag).toHaveLength(32);
+		expect(new TextDecoder().decode((await store.get('segmented.tgz'))!)).toBe(
+			'large artifact'
+		);
+	});
+
 	test('put preserves contentType + metadata', async () => {
 		await store.put('typed.txt', 'x', {
 			contentType: 'text/plain; charset=utf-8',
@@ -346,12 +363,7 @@ const makeMockS3Client = (
 		},
 		putObject: async (input) => {
 			calls.push({ input, op: 'put' });
-			const bytes =
-				typeof input.Body === 'string'
-					? new TextEncoder().encode(input.Body)
-					: input.Body instanceof Uint8Array
-						? input.Body
-						: new Uint8Array(); // streams not exercised here
+			const bytes = await collectBody(input.Body);
 			store.set(input.Key, {
 				body: bytes,
 				meta: {
@@ -376,6 +388,25 @@ describe('s3BlobStore', () => {
 		expect(new TextDecoder().decode(stored['greet.txt']!.body)).toBe('hello');
 		const got = await store.get('greet.txt');
 		expect(new TextDecoder().decode(got!)).toBe('hello');
+	});
+
+	test('streams segmented uploads and reports their exact size', async () => {
+		const { client } = makeMockS3Client();
+		const store = s3BlobStore({ bucket: 'test', client });
+		const source = new ReadableStream<Uint8Array>({
+			start(controller) {
+				controller.enqueue(new TextEncoder().encode('streamed '));
+				controller.enqueue(new TextEncoder().encode('without buffering'));
+				controller.close();
+			}
+		});
+		const stored = await store.put('stream.tgz', source);
+		const bytes = await store.get('stream.tgz');
+
+		expect(stored.size).toBe(26);
+		expect(new TextDecoder().decode(bytes!)).toBe(
+			'streamed without buffering'
+		);
 	});
 
 	test('put forwards contentType + metadata + cacheControl', async () => {
