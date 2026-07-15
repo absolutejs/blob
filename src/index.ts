@@ -51,6 +51,8 @@ export type PutOptions = {
 	cacheControl?: string;
 	/** `Content-Disposition` (e.g. `'attachment; filename="x.pdf"'`). */
 	contentDisposition?: string;
+	/** Abort the write when the body exceeds this many bytes. */
+	maxBytes?: number;
 };
 
 export type ListOptions = {

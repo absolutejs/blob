@@ -34,6 +34,14 @@ describe('awsS3BlobStore', () => {
 		});
 
 		try {
+			await expect(
+				store.put(
+					'oversized.bin',
+					new Blob(['too large']).stream(),
+					{ maxBytes: 4 }
+				)
+			).rejects.toThrow('exceeds 4 bytes');
+			expect(await store.head('oversized.bin')).toBeNull();
 			const stored = await store.put('releases/artifact.tgz', source, {
 				contentType: 'application/gzip',
 				metadata: { sha256: 'test-digest' }
@@ -58,6 +66,7 @@ describe('awsS3BlobStore', () => {
 			await store.delete('releases/artifact.tgz');
 			expect(await store.head('releases/artifact.tgz')).toBeNull();
 		} finally {
+			await store.delete('oversized.bin');
 			await store.delete('releases/artifact.tgz');
 			await client.send(new DeleteBucketCommand({ Bucket: bucket }));
 			client.destroy();

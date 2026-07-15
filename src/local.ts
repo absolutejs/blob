@@ -139,6 +139,12 @@ export const localBlobStore = (
 		putOptions: PutOptions = {}
 	): Promise<BlobObject> => {
 		validateKey(key);
+		const maxBytes = putOptions.maxBytes;
+		if (
+			maxBytes !== undefined &&
+			(!Number.isSafeInteger(maxBytes) || maxBytes < 1)
+		)
+			throw new BlobError('maxBytes must be a positive integer', 'INVALID_KEY');
 		await ensureRoot();
 		const bodyPath = join_(options.root, key);
 		await mkdir(dirname(bodyPath), { recursive: true });
@@ -151,6 +157,16 @@ export const localBlobStore = (
 				const observe = new Transform({
 					transform(chunk: Buffer, _encoding, callback) {
 						size += chunk.byteLength;
+						if (maxBytes !== undefined && size > maxBytes) {
+							callback(
+								new BlobError(
+									`blob exceeds ${maxBytes} bytes`,
+									'PROVIDER_ERROR'
+								)
+							);
+
+							return;
+						}
 						hash.update(chunk);
 						callback(null, chunk);
 					}
@@ -165,6 +181,11 @@ export const localBlobStore = (
 			} else {
 				const bytes = await collectBody(body);
 				size = bytes.byteLength;
+				if (maxBytes !== undefined && size > maxBytes)
+					throw new BlobError(
+						`blob exceeds ${maxBytes} bytes`,
+						'PROVIDER_ERROR'
+					);
 				hash.update(bytes);
 				await writeFile(tempPath, bytes, { mode });
 			}

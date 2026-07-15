@@ -100,7 +100,10 @@ export type S3PresignInput = {
  * copy-paste template).
  */
 export type S3ClientLike = {
-	putObject: (input: S3PutInput) => Promise<S3PutOutput>;
+	putObject: (
+		input: S3PutInput,
+		options?: { maxBytes?: number }
+	) => Promise<S3PutOutput>;
 	getObject: (input: S3GetInput) => Promise<S3GetOutput | null>;
 	headObject: (input: S3GetInput) => Promise<S3HeadOutput | null>;
 	deleteObject: (input: S3GetInput) => Promise<unknown>;
@@ -226,6 +229,12 @@ export const s3BlobStore = (options: S3BlobStoreOptions): BlobStore => {
 		putOptions: PutOptions = {}
 	): Promise<BlobObject> => {
 		validateKey(key);
+		const maxBytes = putOptions.maxBytes;
+		if (
+			maxBytes !== undefined &&
+			(!Number.isSafeInteger(maxBytes) || maxBytes < 1)
+		)
+			throw new BlobError('maxBytes must be a positive integer', 'INVALID_KEY');
 		let size = 0;
 		let uploadBody: S3PutInput['Body'];
 		if (body instanceof ReadableStream) {
@@ -239,6 +248,11 @@ export const s3BlobStore = (options: S3BlobStoreOptions): BlobStore => {
 		} else {
 			const bytes = await collectBody(body);
 			size = bytes.byteLength;
+			if (maxBytes !== undefined && size > maxBytes)
+				throw new BlobError(
+					`blob exceeds ${maxBytes} bytes`,
+					'PROVIDER_ERROR'
+				);
 			uploadBody = bytes;
 		}
 		const input: S3PutInput = {
@@ -256,7 +270,9 @@ export const s3BlobStore = (options: S3BlobStoreOptions): BlobStore => {
 		if (putOptions.contentDisposition !== undefined) {
 			input.ContentDisposition = putOptions.contentDisposition;
 		}
-		const output = await client.putObject(input);
+		const output = await client.putObject(input, {
+			...(maxBytes === undefined ? {} : { maxBytes })
+		});
 		const result: BlobObject = {
 			key,
 			lastModified: Date.now(),

@@ -1,5 +1,12 @@
 # @absolutejs/blob changelog
 
+## 0.2.1 — 2026-07-15
+
+### Added
+
+- Add `PutOptions.maxBytes` so adapters abort oversized atomic or multipart
+  writes at the storage boundary instead of relying on an error-prone wrapper.
+
 ## 0.2.0 — 2026-07-15
 
 ### Added

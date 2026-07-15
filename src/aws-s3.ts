@@ -11,26 +11,47 @@ import {
 } from '@aws-sdk/client-s3';
 import { Upload } from '@aws-sdk/lib-storage';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { Readable } from 'node:stream';
+import { Readable, Transform } from 'node:stream';
 import type { ReadableStream as NodeReadableStream } from 'node:stream/web';
 import { s3BlobStore, type S3ClientLike, type S3PutInput } from './s3';
 
-const putInput = (input: S3PutInput): PutObjectCommandInput => ({
-	Body:
-		input.Body instanceof ReadableStream
-			? Readable.fromWeb(
-					input.Body as unknown as NodeReadableStream<Uint8Array>
-				)
-			: input.Body,
-	Bucket: input.Bucket,
-	Key: input.Key,
-	...(input.CacheControl ? { CacheControl: input.CacheControl } : {}),
-	...(input.ContentDisposition
-		? { ContentDisposition: input.ContentDisposition }
-		: {}),
-	...(input.ContentType ? { ContentType: input.ContentType } : {}),
-	...(input.Metadata ? { Metadata: input.Metadata } : {})
-});
+const putInput = (
+	input: S3PutInput,
+	maxBytes?: number
+): PutObjectCommandInput => {
+	let bytes = 0;
+
+	return {
+		Body:
+			input.Body instanceof ReadableStream
+				? Readable.fromWeb(
+						input.Body as unknown as NodeReadableStream<Uint8Array>
+					).pipe(
+						new Transform({
+							transform(chunk: Buffer, _encoding, callback) {
+								bytes += chunk.byteLength;
+								if (maxBytes !== undefined && bytes > maxBytes) {
+									callback(
+										new Error(`blob exceeds ${maxBytes} bytes`)
+									);
+
+									return;
+								}
+								callback(null, chunk);
+							}
+						})
+					)
+				: input.Body,
+		Bucket: input.Bucket,
+		Key: input.Key,
+		...(input.CacheControl ? { CacheControl: input.CacheControl } : {}),
+		...(input.ContentDisposition
+			? { ContentDisposition: input.ContentDisposition }
+			: {}),
+		...(input.ContentType ? { ContentType: input.ContentType } : {}),
+		...(input.Metadata ? { Metadata: input.Metadata } : {})
+	};
+};
 
 export const awsS3Client = (client: S3Client): S3ClientLike => ({
 	deleteObject: (input) => client.send(new DeleteObjectCommand(input)),
@@ -90,8 +111,8 @@ export const awsS3Client = (client: S3Client): S3ClientLike => ({
 		getSignedUrl(client, new GetObjectCommand(input), options),
 	presignPutObject: (input, options) =>
 		getSignedUrl(client, new PutObjectCommand(input), options),
-	putObject: async (input) => {
-		const commandInput = putInput(input);
+	putObject: async (input, options) => {
+		const commandInput = putInput(input, options?.maxBytes);
 		if (input.Body instanceof ReadableStream) {
 			const output = await new Upload({
 				client,

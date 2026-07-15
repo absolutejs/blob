@@ -1,6 +1,6 @@
 {
   "name": "@absolutejs/blob",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Object storage substrate for AbsoluteJS. One BlobStore interface with bounded streaming local and S3-compatible adapters, plus official AWS SDK wiring for multipart object storage.",
   "repository": {
     "type": "git",

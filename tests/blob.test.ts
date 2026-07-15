@@ -129,6 +129,14 @@ describe('localBlobStore', () => {
 		);
 	});
 
+	test('aborts an oversized streaming write without retaining a blob', async () => {
+		const source = new Blob(['too large']).stream();
+		await expect(
+			store.put('oversized.bin', source, { maxBytes: 4 })
+		).rejects.toThrow('exceeds 4 bytes');
+		expect(await store.head('oversized.bin')).toBeNull();
+	});
+
 	test('put preserves contentType + metadata', async () => {
 		await store.put('typed.txt', 'x', {
 			contentType: 'text/plain; charset=utf-8',
@@ -361,9 +369,14 @@ const makeMockS3Client = (
 			calls.push({ input: { ...input, expiresIn: opts.expiresIn }, op: 'presign-put' });
 			return `https://example.test/${input.Bucket}/${input.Key}?X-Amz-Expires=${opts.expiresIn}&Method=PUT`;
 		},
-		putObject: async (input) => {
+		putObject: async (input, options) => {
 			calls.push({ input, op: 'put' });
 			const bytes = await collectBody(input.Body);
+			if (
+				options?.maxBytes !== undefined &&
+				bytes.byteLength > options.maxBytes
+			)
+				throw new Error(`blob exceeds ${options.maxBytes} bytes`);
 			store.set(input.Key, {
 				body: bytes,
 				meta: {
@@ -407,6 +420,17 @@ describe('s3BlobStore', () => {
 		expect(new TextDecoder().decode(bytes!)).toBe(
 			'streamed without buffering'
 		);
+	});
+
+	test('aborts an oversized S3 stream before it is retained', async () => {
+		const { client } = makeMockS3Client();
+		const store = s3BlobStore({ bucket: 'test', client });
+		await expect(
+			store.put('oversized.bin', new Blob(['too large']).stream(), {
+				maxBytes: 4
+			})
+		).rejects.toThrow('exceeds 4 bytes');
+		expect(await store.head('oversized.bin')).toBeNull();
 	});
 
 	test('put forwards contentType + metadata + cacheControl', async () => {
