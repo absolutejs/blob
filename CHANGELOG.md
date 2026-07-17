@@ -1,5 +1,12 @@
 # @absolutejs/blob changelog
 
+## 0.3.0 — 2026-07-17
+
+### Added
+
+- Add the optional `@absolutejs/blob/uploadthing` adapter with stable custom
+  keys, bounded uploads, provider-neutral listing/deletion, and signed reads.
+
 ## 0.2.1 — 2026-07-15
 
 ### Added
@@ -30,7 +37,7 @@ substrate now has object storage as a first-class primitive.
 ### Added
 
 - **`BlobStore` interface** — `put / get / getStream / head / delete /
-  list / presign`. The same shape across every adapter so swapping
+list / presign`. The same shape across every adapter so swapping
   providers is one constructor change.
 - **`BlobError`** with codes (`NOT_FOUND`, `ALREADY_EXISTS`,
   `UNAUTHORIZED`, `INVALID_KEY`, `UNSUPPORTED`, `PROVIDER_ERROR`).
@@ -38,7 +45,7 @@ substrate now has object storage as a first-class primitive.
   at the substrate. Rejects leading `/`, NUL bytes, and `.` / `..`
   segments. Adapters call it on every operation.
 - **`collectBody(body)`** — coerces `Uint8Array | string |
-  ReadableStream<Uint8Array>` into bytes. Shared by adapters that
+ReadableStream<Uint8Array>` into bytes. Shared by adapters that
   need to materialize a stream (e.g. to compute ETag).
 
 ### Adapters — `@absolutejs/blob/local`
@@ -70,8 +77,7 @@ substrate now has object storage as a first-class primitive.
   underlying client returning `null`. `get` / `head` map to `null`;
   `delete` is idempotent.
 - **`presign`** routes to `presignGetObject` (default) or
-  `presignPutObject` (`operation: 'put'`). `ttlSeconds` default
-  3600. `contentType` on put-presign for upload validation.
+  `presignPutObject` (`operation: 'put'`). `ttlSeconds` default 3600. `contentType` on put-presign for upload validation.
 
 ### Tests
 

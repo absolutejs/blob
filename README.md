@@ -12,11 +12,12 @@ const url = await store.presign('users/42/avatar.png', { ttlSeconds: 900 });
 
 ## Adapters
 
-| Subpath | Backs |
-| --- | --- |
-| `@absolutejs/blob/local` | Filesystem (dev / single-host prod / tests) |
-| `@absolutejs/blob/s3` | AWS S3, Cloudflare R2, Backblaze B2, MinIO, Wasabi, Tigris — any S3-compatible HTTP API |
-| `@absolutejs/blob/aws-s3` | Official AWS SDK wiring, including multipart streaming uploads |
+| Subpath                        | Backs                                                                                   |
+| ------------------------------ | --------------------------------------------------------------------------------------- |
+| `@absolutejs/blob/local`       | Filesystem (dev / single-host prod / tests)                                             |
+| `@absolutejs/blob/s3`          | AWS S3, Cloudflare R2, Backblaze B2, MinIO, Wasabi, Tigris — any S3-compatible HTTP API |
+| `@absolutejs/blob/aws-s3`      | Official AWS SDK wiring, including multipart streaming uploads                          |
+| `@absolutejs/blob/uploadthing` | UploadThing server SDK with stable application-owned custom ids and signed reads        |
 
 Both implement the same `BlobStore` interface — swap providers with
 one constructor change.
@@ -24,10 +25,10 @@ one constructor change.
 ## Local
 
 ```ts
-import { localBlobStore } from '@absolutejs/blob/local';
+import { localBlobStore } from "@absolutejs/blob/local";
 
-const blobs = localBlobStore({ root: './var/blobs' });
-await blobs.put('uploads/file.pdf', body);
+const blobs = localBlobStore({ root: "./var/blobs" });
+await blobs.put("uploads/file.pdf", body);
 ```
 
 Files at `<root>/<key>`. Metadata (contentType, user metadata,
@@ -39,12 +40,12 @@ dev.
 ## S3 (any S3-compatible service)
 
 ```ts
-import { S3Client } from '@aws-sdk/client-s3';
-import { awsS3BlobStore } from '@absolutejs/blob/aws-s3';
+import { S3Client } from "@aws-sdk/client-s3";
+import { awsS3BlobStore } from "@absolutejs/blob/aws-s3";
 
-const aws = new S3Client({ region: 'us-east-1' });
+const aws = new S3Client({ region: "us-east-1" });
 
-const blobs = awsS3BlobStore({ bucket: 'my-bucket', client: aws });
+const blobs = awsS3BlobStore({ bucket: "my-bucket", client: aws });
 ```
 
 `awsS3BlobStore` uses the official SDK command clients and
@@ -56,7 +57,7 @@ available for custom clients.
 
 ```ts
 const aws = new S3Client({
-  region: 'auto',
+  region: "auto",
   endpoint: `https://${ACCOUNT_ID}.r2.cloudflarestorage.com`,
   credentials: { accessKeyId, secretAccessKey },
 });
@@ -75,7 +76,11 @@ provide credentials, hand the client into `s3BlobStore`.
 ```ts
 type BlobStore = {
   readonly description: string;
-  put: (key: string, body: BlobBody, options?: PutOptions) => Promise<BlobObject>;
+  put: (
+    key: string,
+    body: BlobBody,
+    options?: PutOptions,
+  ) => Promise<BlobObject>;
   get: (key: string) => Promise<Uint8Array | null>;
   getStream: (key: string) => Promise<ReadableStream<Uint8Array> | null>;
   head: (key: string) => Promise<BlobObject | null>;
@@ -101,10 +106,10 @@ type BlobBody = Uint8Array | string | ReadableStream<Uint8Array>;
 ## Key validation
 
 ```ts
-validateKey('users/42/avatar.png');  // ok
-validateKey('/etc/passwd');          // BlobError('INVALID_KEY')
-validateKey('../escape');            // BlobError('INVALID_KEY')
-validateKey('with\0nul');            // BlobError('INVALID_KEY')
+validateKey("users/42/avatar.png"); // ok
+validateKey("/etc/passwd"); // BlobError('INVALID_KEY')
+validateKey("../escape"); // BlobError('INVALID_KEY')
+validateKey("with\0nul"); // BlobError('INVALID_KEY')
 ```
 
 Adapters call `validateKey()` on every operation. Leading slashes,
