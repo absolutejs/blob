@@ -1,6 +1,6 @@
 {
   "name": "@absolutejs/blob",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Object storage substrate for AbsoluteJS. One BlobStore interface with bounded streaming local and S3-compatible adapters, plus official AWS SDK wiring for multipart object storage.",
   "repository": {
     "type": "git",
@@ -45,6 +45,11 @@
       "import": "./dist/uploadthing.js",
       "default": "./dist/uploadthing.js"
     },
+    "./inspection": {
+      "types": "./dist/inspection.d.ts",
+      "import": "./dist/inspection.js",
+      "default": "./dist/inspection.js"
+    },
     "./manifest": {
       "types": "./dist/manifest.d.ts",
       "import": "./dist/manifest.js",
@@ -60,7 +65,7 @@
     "README.md"
   ],
   "scripts": {
-    "build": "rm -rf dist && bun build src/index.ts src/local.ts src/s3.ts src/aws-s3.ts src/uploadthing.ts src/manifest.ts --outdir dist --root src --sourcemap --target=bun --external @aws-sdk/client-s3 --external @aws-sdk/lib-storage --external @aws-sdk/s3-request-presigner --external uploadthing && tsc --project tsconfig.build.json && absolute-manifest emit",
+    "build": "rm -rf dist && bun build src/index.ts src/local.ts src/s3.ts src/aws-s3.ts src/uploadthing.ts src/inspection.ts src/manifest.ts --outdir dist --root src --sourcemap --target=bun --external @aws-sdk/client-s3 --external @aws-sdk/lib-storage --external @aws-sdk/s3-request-presigner --external uploadthing && tsc --project tsconfig.build.json && absolute-manifest emit",
     "test": "bun test tests/",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write \"./**/*.{ts,json,md}\"",

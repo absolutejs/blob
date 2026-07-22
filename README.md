@@ -12,15 +12,42 @@ const url = await store.presign('users/42/avatar.png', { ttlSeconds: 900 });
 
 ## Adapters
 
-| Subpath                        | Backs                                                                                   |
-| ------------------------------ | --------------------------------------------------------------------------------------- |
-| `@absolutejs/blob/local`       | Filesystem (dev / single-host prod / tests)                                             |
-| `@absolutejs/blob/s3`          | AWS S3, Cloudflare R2, Backblaze B2, MinIO, Wasabi, Tigris — any S3-compatible HTTP API |
-| `@absolutejs/blob/aws-s3`      | Official AWS SDK wiring, including multipart streaming uploads                          |
-| `@absolutejs/blob/uploadthing` | UploadThing server SDK with stable application-owned custom ids and signed reads        |
+| Subpath                        | Backs                                                                                            |
+| ------------------------------ | ------------------------------------------------------------------------------------------------ |
+| `@absolutejs/blob/local`       | Filesystem (dev / single-host prod / tests)                                                      |
+| `@absolutejs/blob/s3`          | AWS S3, Cloudflare R2, Backblaze B2, MinIO, Wasabi, Tigris — any S3-compatible HTTP API          |
+| `@absolutejs/blob/aws-s3`      | Official AWS SDK wiring, including multipart streaming uploads                                   |
+| `@absolutejs/blob/uploadthing` | UploadThing server SDK with stable application-owned custom ids and signed reads                 |
+| `@absolutejs/blob/inspection`  | Provider-neutral inspection contract, bounded stored-object inspection, and ClamAV clamd adapter |
 
 Both implement the same `BlobStore` interface — swap providers with
 one constructor change.
+
+## Private upload inspection
+
+Uploads that can contain customer-controlled bytes should remain under a
+private quarantine key until an inspector returns `clean`. The inspection
+subpath preserves the same workflow across local, UploadThing, S3, R2, and
+Spaces storage:
+
+```ts
+import {
+  createClamdBlobInspector,
+  inspectStoredBlob,
+} from "@absolutejs/blob/inspection";
+
+const inspector = createClamdBlobInspector({ host: "clamav.internal" });
+const result = await inspectStoredBlob(blobs, inspector, {
+  filename: "evidence.pdf",
+  key: "quarantine/case/evidence.pdf",
+  maxBytes: 25 * 1024 * 1024,
+});
+```
+
+The clamd adapter uses the bounded `INSTREAM` protocol and returns `clean`,
+`infected`, or `unavailable`. Scanner errors never become a clean verdict. The
+host owns durable quarantine, retry, retention, and audit policy; Blob only
+owns byte transport and normalized inspection.
 
 ## Local
 
