@@ -12,7 +12,7 @@ const tool = toolFactory<BlobStore>();
 /* Blob has no serializable top-level config: the store IS the instance, so
  * the single `$self` slot picks which adapter builds it. */
 export const manifest = defineManifest<Record<never, never>, BlobStore>()({
-  contract: 1,
+  contract: 2,
   identity: {
     accent: "#f59e0b",
     category: "storage",
@@ -141,6 +141,15 @@ export const manifest = defineManifest<Record<never, never>, BlobStore>()({
   tools: {
     delete_file: tool.runtime({
       annotations: { destructiveHint: true, idempotentHint: true },
+      authorization: {
+        approval: "always",
+        audience: "owner",
+        effects: ["delete"],
+        idempotency: { mode: "resource" },
+        requiredScopes: ["blob:delete"],
+        resource: { idField: "key", type: "blob-object" },
+        reversible: false,
+      },
       description:
         "Delete one stored file by key. Deleting a missing key succeeds (idempotent).",
       handler: async ({ key }, store) => {
@@ -152,6 +161,13 @@ export const manifest = defineManifest<Record<never, never>, BlobStore>()({
     }),
     file_info: tool.runtime({
       annotations: { readOnlyHint: true },
+      authorization: {
+        approval: "never",
+        audience: "owner",
+        effects: ["read"],
+        requiredScopes: ["blob:read"],
+        resource: { idField: "key", type: "blob-object" },
+      },
       description:
         "Get metadata (size, type, last modified) for one stored file, without downloading it.",
       handler: async ({ key }, store) => {
@@ -165,6 +181,12 @@ export const manifest = defineManifest<Record<never, never>, BlobStore>()({
     }),
     list_files: tool.runtime({
       annotations: { readOnlyHint: true },
+      authorization: {
+        approval: "never",
+        audience: "owner",
+        effects: ["read"],
+        requiredScopes: ["blob:read"],
+      },
       description:
         "List stored files, optionally under a prefix. Returns keys, sizes, and a cursor for paging.",
       handler: async (input, store) => JSON.stringify(await store.list(input)),
@@ -175,7 +197,17 @@ export const manifest = defineManifest<Record<never, never>, BlobStore>()({
       }),
     }),
     presign_url: tool.runtime({
-      annotations: { readOnlyHint: true },
+      annotations: { idempotentHint: true, openWorldHint: true },
+      authorization: {
+        approval: "policy",
+        audience: "owner",
+        destinations: ["configured-blob-store"],
+        effects: ["read", "write", "external-network"],
+        idempotency: { mode: "host" },
+        requiredScopes: ["blob:presign"],
+        resource: { idField: "key", type: "blob-object" },
+        reversible: false,
+      },
       description:
         "Create a time-limited URL a browser can use to download (get) or upload (put) a file directly. Not supported by the local-disk store.",
       handler: async ({ key, operation, ttlSeconds }, store) =>

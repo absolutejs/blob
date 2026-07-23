@@ -1,6 +1,6 @@
 {
   "name": "@absolutejs/blob",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Object storage substrate for AbsoluteJS. One BlobStore interface with bounded streaming local and S3-compatible adapters, plus official AWS SDK wiring for multipart object storage.",
   "repository": {
     "type": "git",
@@ -17,7 +17,7 @@
   "license": "BSL-1.1",
   "author": "Alex Kahn",
   "absolutejs": {
-    "manifestContract": 1
+    "manifestContract": 2
   },
   "exports": {
     ".": {
@@ -112,7 +112,7 @@
     "uploadthing": "7.7.4"
   },
   "dependencies": {
-    "@absolutejs/manifest": "^0.1.0",
+    "@absolutejs/manifest": "^0.4.0",
     "@sinclair/typebox": "^0.34.0"
   }
 }
