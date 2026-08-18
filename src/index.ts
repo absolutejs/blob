@@ -53,6 +53,8 @@ export type PutOptions = {
   contentDisposition?: string;
   /** Abort the write when the body exceeds this many bytes. */
   maxBytes?: number;
+  /** Abort an in-flight write, including multipart provider uploads. */
+  signal?: AbortSignal;
 };
 
 export type ListOptions = {

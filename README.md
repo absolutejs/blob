@@ -58,6 +58,9 @@ const blobs = localBlobStore({ root: "./var/blobs" });
 await blobs.put("uploads/file.pdf", body);
 ```
 
+Writes accept `maxBytes` and an `AbortSignal`, including multipart S3/R2
+uploads: `blobs.put(key, body, { maxBytes, signal })`.
+
 Files at `<root>/<key>`. Metadata (contentType, user metadata,
 cache headers) at `<root>/<key>.meta.json`. Atomic writes via temp
 file + rename. `presign()` throws `BlobError('UNSUPPORTED')` —

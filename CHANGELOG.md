@@ -1,5 +1,13 @@
 # @absolutejs/blob changelog
 
+## 0.5.2 — 2026-08-18
+
+### Added
+
+- Add `PutOptions.signal` and propagate aborts through local writes, generic S3
+  clients, AWS single-part requests, and AWS multipart uploads. Multipart
+  aborts retain no unfinished parts.
+
 ## 0.3.0 — 2026-07-17
 
 ### Added

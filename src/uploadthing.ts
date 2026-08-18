@@ -147,6 +147,7 @@ export const uploadThingBlobStore = (
     },
     put: async (key, body, putOptions: PutOptions = {}) => {
       validateKey(key);
+      putOptions.signal?.throwIfAborted();
       const bytes = await collectBody(body);
       if (
         putOptions.maxBytes !== undefined &&

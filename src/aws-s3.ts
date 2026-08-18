@@ -112,15 +112,25 @@ export const awsS3Client = (client: S3Client): S3ClientLike => ({
   putObject: async (input, options) => {
     const commandInput = putInput(input, options?.maxBytes);
     if (input.Body instanceof ReadableStream) {
-      const output = await new Upload({
+      const upload = new Upload({
         client,
         leavePartsOnError: false,
         params: commandInput,
-      }).done();
+      });
+      const abort = () => void upload.abort();
+      options?.signal?.addEventListener("abort", abort, { once: true });
+      try {
+        options?.signal?.throwIfAborted();
+        const output = await upload.done();
 
-      return output.ETag ? { ETag: output.ETag } : {};
+        return output.ETag ? { ETag: output.ETag } : {};
+      } finally {
+        options?.signal?.removeEventListener("abort", abort);
+      }
     }
-    const output = await client.send(new PutObjectCommand(commandInput));
+    const output = await client.send(new PutObjectCommand(commandInput), {
+      abortSignal: options?.signal,
+    });
 
     return output.ETag ? { ETag: output.ETag } : {};
   },

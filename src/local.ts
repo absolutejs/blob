@@ -137,6 +137,7 @@ export const localBlobStore = (options: LocalBlobStoreOptions): BlobStore => {
     putOptions: PutOptions = {},
   ): Promise<BlobObject> => {
     validateKey(key);
+    putOptions.signal?.throwIfAborted();
     const maxBytes = putOptions.maxBytes;
     if (
       maxBytes !== undefined &&
@@ -173,6 +174,7 @@ export const localBlobStore = (options: LocalBlobStoreOptions): BlobStore => {
           Readable.fromWeb(body as unknown as NodeReadableStream<Uint8Array>),
           observe,
           createWriteStream(tempPath, { mode }),
+          { signal: putOptions.signal },
         );
       } else {
         const bytes = await collectBody(body);
@@ -183,7 +185,7 @@ export const localBlobStore = (options: LocalBlobStoreOptions): BlobStore => {
             "PROVIDER_ERROR",
           );
         hash.update(bytes);
-        await writeFile(tempPath, bytes, { mode });
+        await writeFile(tempPath, bytes, { mode, signal: putOptions.signal });
       }
       await rename(tempPath, bodyPath);
     } catch (error) {

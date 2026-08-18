@@ -102,7 +102,7 @@ export type S3PresignInput = {
 export type S3ClientLike = {
   putObject: (
     input: S3PutInput,
-    options?: { maxBytes?: number },
+    options?: { maxBytes?: number; signal?: AbortSignal },
   ) => Promise<S3PutOutput>;
   getObject: (input: S3GetInput) => Promise<S3GetOutput | null>;
   headObject: (input: S3GetInput) => Promise<S3HeadOutput | null>;
@@ -231,6 +231,7 @@ export const s3BlobStore = (options: S3BlobStoreOptions): BlobStore => {
     putOptions: PutOptions = {},
   ): Promise<BlobObject> => {
     validateKey(key);
+    putOptions.signal?.throwIfAborted();
     const maxBytes = putOptions.maxBytes;
     if (
       maxBytes !== undefined &&
@@ -246,7 +247,7 @@ export const s3BlobStore = (options: S3BlobStoreOptions): BlobStore => {
           controller.enqueue(chunk);
         },
       });
-      uploadBody = body.pipeThrough(counter);
+      uploadBody = body.pipeThrough(counter, { signal: putOptions.signal });
     } else {
       const bytes = await collectBody(body);
       size = bytes.byteLength;
@@ -271,6 +272,7 @@ export const s3BlobStore = (options: S3BlobStoreOptions): BlobStore => {
     }
     const output = await client.putObject(input, {
       ...(maxBytes === undefined ? {} : { maxBytes }),
+      ...(putOptions.signal ? { signal: putOptions.signal } : {}),
     });
     const result: BlobObject = {
       key,

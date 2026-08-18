@@ -374,6 +374,7 @@ const makeMockS3Client = (
       return `https://example.test/${input.Bucket}/${input.Key}?X-Amz-Expires=${opts.expiresIn}&Method=PUT`;
     },
     putObject: async (input, options) => {
+      options?.signal?.throwIfAborted();
       calls.push({ input, op: "put" });
       const bytes = await collectBody(input.Body);
       if (
@@ -433,6 +434,20 @@ describe("s3BlobStore", () => {
       }),
     ).rejects.toThrow("exceeds 4 bytes");
     expect(await store.head("oversized.bin")).toBeNull();
+  });
+
+  test("forwards and honors an upload abort signal", async () => {
+    const { client } = makeMockS3Client();
+    const store = s3BlobStore({ bucket: "test", client });
+    const controller = new AbortController();
+    controller.abort(new DOMException("timed out", "TimeoutError"));
+
+    await expect(
+      store.put("aborted.bin", new Uint8Array([1]), {
+        signal: controller.signal,
+      }),
+    ).rejects.toMatchObject({ name: "TimeoutError" });
+    expect(await store.head("aborted.bin")).toBeNull();
   });
 
   test("put forwards contentType + metadata + cacheControl", async () => {
