@@ -73,7 +73,7 @@
     "format": "prettier --write \"./**/*.{ts,json,md}\"",
     "check:package": "bun run typecheck && bun run build && bun run test && absolute-changelog check",
     "release": "bun run format && bun run check:package && bun publish",
-    "prepublishOnly": "absolute-changelog check"
+    "prepublishOnly": "bun run check:package"
   },
   "keywords": [
     "absolutejs",
@@ -105,7 +105,7 @@
     }
   },
   "devDependencies": {
-    "@absolutejs/changelog": "^0.5.1",
+    "@absolutejs/changelog": "^0.6.0",
     "@aws-sdk/client-s3": "3.1095.0",
     "@aws-sdk/lib-storage": "3.1095.0",
     "@aws-sdk/s3-request-presigner": "3.1095.0",
