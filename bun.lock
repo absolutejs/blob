@@ -5,10 +5,11 @@
     "": {
       "name": "@absolutejs/blob",
       "dependencies": {
-        "@absolutejs/manifest": "^0.7.2",
+        "@absolutejs/manifest": "^0.9.0",
         "@sinclair/typebox": "^0.34.0",
       },
       "devDependencies": {
+        "@absolutejs/changelog": "^0.1.2",
         "@aws-sdk/client-s3": "3.1095.0",
         "@aws-sdk/lib-storage": "3.1095.0",
         "@aws-sdk/s3-request-presigner": "3.1095.0",
@@ -32,7 +33,9 @@
     },
   },
   "packages": {
-    "@absolutejs/manifest": ["@absolutejs/manifest@0.7.2", "", { "peerDependencies": { "@sinclair/typebox": ">=0.34.0 <0.35.0" }, "bin": { "absolute-manifest": "dist/cli.js" } }, "sha512-NSVzC4yHbH+n+WCNdWYrpbc+3k5rOfO4X85Ku9VCP8teRaa2VEibp29Cyvg9rQARUGaQjGGTz+l+APqM0+odxg=="],
+    "@absolutejs/changelog": ["@absolutejs/changelog@0.1.2", "", { "bin": { "absolute-changelog": "dist/cli.js" } }, "sha512-q6gQwkDr0IVdWHzTOT3AaZvPSn0ucNidbjBnAUZ8CSwS3wrCd02YMXuBC8sd0ptpYvCowLnR/QWIpBrNqbn+YA=="],
+
+    "@absolutejs/manifest": ["@absolutejs/manifest@0.9.0", "", { "peerDependencies": { "@sinclair/typebox": ">=0.34.0 <0.35.0" }, "bin": { "absolute-manifest": "dist/cli.js" } }, "sha512-naNDdwNoWQgJ3HuFbAu1UcOVR7SGpLBJz/seO8MMX32vrxk6esgzY7OB1CL8YDOegtI/EqQfcvnulnP66A9aGg=="],
 
     "@aws-sdk/checksums": ["@aws-sdk/checksums@3.1000.20", "", { "dependencies": { "@aws-sdk/core": "^3.977.0", "@aws-sdk/types": "^3.974.2", "@smithy/core": "^3.29.8", "@smithy/types": "^4.16.1", "tslib": "^2.6.2" } }, "sha512-uc5PMNcLcs+UBSLGsRjbMZKi3mgnPSalXpABw9Xjo0DMrv4gjIa/E4a02yJsuU4FF6Tmvis/JgGdKNIOoN4DQw=="],
 

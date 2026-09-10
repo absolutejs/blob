@@ -17,57 +17,7 @@
   "license": "BSL-1.1",
   "author": "Alex Kahn",
   "absolutejs": {
-    "manifestContract": 2,
-    "runtimePeers": {
-      "@aws-sdk/client-s3": {
-        "artifactImports": [
-          "@aws-sdk/client-s3"
-        ],
-        "artifactReferences": [],
-        "buildExternals": [
-          "@aws-sdk/client-s3"
-        ],
-        "optional": true,
-        "range": "^3.1087.0",
-        "tested": "3.1095.0"
-      },
-      "@aws-sdk/lib-storage": {
-        "artifactImports": [
-          "@aws-sdk/lib-storage"
-        ],
-        "artifactReferences": [],
-        "buildExternals": [
-          "@aws-sdk/lib-storage"
-        ],
-        "optional": true,
-        "range": "^3.1087.0",
-        "tested": "3.1095.0"
-      },
-      "@aws-sdk/s3-request-presigner": {
-        "artifactImports": [
-          "@aws-sdk/s3-request-presigner"
-        ],
-        "artifactReferences": [],
-        "buildExternals": [
-          "@aws-sdk/s3-request-presigner"
-        ],
-        "optional": true,
-        "range": "^3.1087.0",
-        "tested": "3.1095.0"
-      },
-      "uploadthing": {
-        "artifactImports": [
-          "uploadthing/server"
-        ],
-        "artifactReferences": [],
-        "buildExternals": [
-          "uploadthing"
-        ],
-        "optional": true,
-        "range": "^7.7.4",
-        "tested": "7.7.4"
-      }
-    }
+    "manifestContract": 2
   },
   "exports": {
     ".": {
@@ -111,15 +61,17 @@
     "access": "public"
   },
   "files": [
-    "dist",
-    "README.md"
+    "CHANGELOG.md",
+    "README.md",
+    "changelog.json",
+    "dist"
   ],
   "scripts": {
     "build": "rm -rf dist && bun build src/index.ts src/local.ts src/s3.ts src/aws-s3.ts src/uploadthing.ts src/inspection.ts src/manifest.ts --outdir dist --root src --sourcemap --target=bun --external @aws-sdk/client-s3 --external @aws-sdk/lib-storage --external @aws-sdk/s3-request-presigner --external uploadthing && tsc --project tsconfig.build.json && absolute-manifest emit",
     "test": "bun test tests/",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write \"./**/*.{ts,json,md}\"",
-    "check:package": "bun run typecheck && bun run build && bun run test",
+    "check:package": "bun run typecheck && bun run build && bun run test && absolute-changelog check",
     "release": "bun run format && bun run check:package && bun publish"
   },
   "keywords": [
@@ -152,6 +104,7 @@
     }
   },
   "devDependencies": {
+    "@absolutejs/changelog": "^0.1.2",
     "@aws-sdk/client-s3": "3.1095.0",
     "@aws-sdk/lib-storage": "3.1095.0",
     "@aws-sdk/s3-request-presigner": "3.1095.0",
@@ -161,7 +114,7 @@
     "uploadthing": "7.7.4"
   },
   "dependencies": {
-    "@absolutejs/manifest": "^0.7.2",
+    "@absolutejs/manifest": "^0.9.0",
     "@sinclair/typebox": "^0.34.0"
   }
 }
