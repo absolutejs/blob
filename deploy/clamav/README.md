@@ -25,3 +25,9 @@ The health and installation scripts need validation on the target host before ac
 
 Configuration references: https://docs.clamav.net/manual/Usage/Configuration.html and
 https://github.com/Cisco-Talos/clamav/blob/main/etc/clamd.conf.sample.
+
+A shared platform host with measured spare capacity may run the service too. Reserve
+3 GB for clamd plus updater overhead, apply CPU limits appropriate to the host, and
+keep application traffic authenticated and rate limited before reaching the daemon.
+Do not expose clamd directly to untrusted tenant workloads. A separate droplet is
+not required when those isolation and capacity conditions hold.

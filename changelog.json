@@ -5,6 +5,19 @@
 		{
 			"changes": [
 				{
+					"kind": "fixed",
+					"summary": "Document shared platform hosting and verify cancellation cannot commit a clean result.",
+					"symbols": [
+						"createBlobInspectionProcessor"
+					]
+				}
+			],
+			"date": "2026-09-24",
+			"version": "0.6.1"
+		},
+		{
+			"changes": [
+				{
 					"kind": "security",
 					"summary": "Fail closed on malformed, truncated, premature, or oversized ClamAV replies; bound frames and release streams and sockets on cancellation or timeout.",
 					"symbols": [

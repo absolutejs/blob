@@ -213,3 +213,12 @@ test("queue processor skips stale jobs and throws after committing unavailable v
   expect(commits).toBe(1);
   await store.delete("a");
 });
+
+test('cancelled job cannot commit a clean result', async () => {
+ const store = localBlobStore({root:`/tmp/blob-cancel-${crypto.randomUUID()}`});
+ await store.put('a','test');
+ const controller = new AbortController();
+ const processor=createBlobInspectionProcessor({store,load:async()=>({key:'a',filename:'a'}),inspector:{description:'fixture',inspect:async()=>{controller.abort();return {scanner:'fixture',verdict:'clean'};}},commit:async(_job,result)=>{expect(result.verdict).toBe('unavailable');}});
+ await expect(processor({resourceId:'a',revision:'1'},controller.signal)).rejects.toBeInstanceOf(BlobInspectionUnavailableError);
+ await store.delete('a');
+});
