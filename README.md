@@ -157,3 +157,20 @@ requests private uploads, enforces `maxBytes` while reading streams, and rejects
 provider deletion failures so durable cleanup can retry. Application authorization
 must precede every signed URL or download. `collectBody(body, {maxBytes, signal})`
 is also available to adapters needing bounded buffering.
+
+## Durable malware inspection
+
+`@absolutejs/blob/inspection` provides `createClamdBlobInspector` and
+`createBlobInspectionProcessor`. Register the processor with your ABS Queue worker.
+Persist a quarantine record and enqueue its `{ resourceId, revision }` atomically.
+The host `load` callback returns `{ key, filename, maxBytes }` only for a current
+quarantined revision; `commit` must recheck the same revision under a row lock.
+Only a `clean` result may release a file. `infected` stays blocked. `unavailable`
+is committed and then throws `BlobInspectionUnavailableError`, allowing queue retries.
+Exhausted jobs must remain quarantined. Pass the worker cancellation signal.
+
+Keep clamd on a private interface or loopback behind an authenticated tunnel: its
+TCP protocol does not authenticate clients. Maintain fresh signatures, configure
+archive/size limits to alert rather than silently skip, and monitor the daemon.
+The inspector bounds transport time and bytes; it cannot establish signature freshness
+or guarantee detection of every malicious file. Never expose unscanned provider URLs.

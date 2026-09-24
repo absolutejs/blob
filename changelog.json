@@ -6,6 +6,30 @@
 			"changes": [
 				{
 					"kind": "security",
+					"summary": "Fail closed on malformed, truncated, premature, or oversized ClamAV replies; bound frames and release streams and sockets on cancellation or timeout.",
+					"symbols": [
+						"createClamdBlobInspector",
+						"parseClamdResponse",
+						"inspectStoredBlob",
+						"BlobInspectionInput"
+					]
+				},
+				{
+					"kind": "added",
+					"summary": "Provide a queue-compatible inspection processor with revision-aware host callbacks and retryable unavailable verdicts.",
+					"symbols": [
+						"createBlobInspectionProcessor",
+						"BlobInspectionUnavailableError"
+					]
+				}
+			],
+			"date": "2026-09-24",
+			"version": "0.6.0"
+		},
+		{
+			"changes": [
+				{
+					"kind": "security",
 					"summary": "Explicit private UploadThing ACL, bounded cancellable uploads, and retryable deletion failures.",
 					"symbols": [
 						"collectBody",
