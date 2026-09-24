@@ -64,3 +64,44 @@ describe("uploadThingBlobStore", () => {
     expect(deleted).toEqual(["projects/one/image.png"]);
   });
 });
+
+test("private ACL is explicit, oversized streams stop before provider upload, and delete failures reject", async () => {
+  let uploads = 0,
+    cancelled = false;
+  const api = {
+    uploadFiles: async (file: any, options: any) => {
+      uploads++;
+      expect(options.acl).toBe("private");
+      return {
+        data: {
+          customId: file.customId,
+          fileHash: "hash",
+          key: "key",
+          name: file.name,
+          size: file.size,
+          type: file.type,
+        },
+        error: null,
+      };
+    },
+    deleteFiles: async () => ({ success: false, deletedCount: 0 }),
+    listFiles: async () => ({ files: [], hasMore: false }),
+    generateSignedURL: async () => ({ ufsUrl: "https://example.com" }),
+  };
+  const store = uploadThingBlobStore({ api, acl: "private" });
+  await store.put("one", new Uint8Array([1]), { maxBytes: 1 });
+  const stream = new ReadableStream<Uint8Array>({
+    pull(c) {
+      c.enqueue(new Uint8Array(10));
+    },
+    cancel() {
+      cancelled = true;
+    },
+  });
+  await expect(store.put("large", stream, { maxBytes: 5 })).rejects.toThrow(
+    "byte limit",
+  );
+  expect(cancelled).toBe(true);
+  expect(uploads).toBe(1);
+  await expect(store.delete("one")).rejects.toThrow("deletion failed");
+});

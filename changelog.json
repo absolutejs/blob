@@ -1,5 +1,21 @@
 {
 	"contract": 1,
 	"name": "@absolutejs/blob",
-	"releases": []
+	"releases": [
+		{
+			"changes": [
+				{
+					"kind": "security",
+					"summary": "Explicit private UploadThing ACL, bounded cancellable uploads, and retryable deletion failures.",
+					"symbols": [
+						"collectBody",
+						"UploadThingClient",
+						"UploadThingBlobStoreOptions"
+					]
+				}
+			],
+			"date": "2026-09-24",
+			"version": "0.5.3"
+		}
+	]
 }

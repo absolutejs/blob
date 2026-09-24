@@ -156,28 +156,57 @@ export class BlobError extends Error {
 // =============================================================================
 
 /** Bytes from a string / Uint8Array / stream into a single Uint8Array. */
-export const collectBody = async (body: BlobBody): Promise<Uint8Array> => {
-  if (typeof body === "string") return new TextEncoder().encode(body);
-  if (body instanceof Uint8Array) return body;
-  // Stream
-  const reader = body.getReader();
-  const chunks: Uint8Array[] = [];
-  let total = 0;
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    if (value !== undefined) {
-      chunks.push(value);
-      total += value.length;
-    }
+export const collectBody = async (
+  body: BlobBody,
+  options: Pick<PutOptions, "maxBytes" | "signal"> = {},
+): Promise<Uint8Array> => {
+  const { maxBytes = Number.MAX_SAFE_INTEGER, signal } = options;
+  if (!Number.isSafeInteger(maxBytes) || maxBytes < 0)
+    throw new BlobError("Invalid byte limit", "INVALID_KEY");
+  signal?.throwIfAborted();
+  const check = (size: number) => {
+    if (size > maxBytes)
+      throw new BlobError(
+        "blob exceeds configured byte limit",
+        "PROVIDER_ERROR",
+      );
+  };
+  if (typeof body === "string") body = new TextEncoder().encode(body);
+  if (body instanceof Uint8Array) {
+    check(body.byteLength);
+    return body;
   }
-  const out = new Uint8Array(total);
+  const reader = body.getReader(),
+    chunks: Uint8Array[] = [];
+  let total = 0;
+  const abort = () => {
+    void reader.cancel(signal?.reason).catch(() => {});
+  };
+  signal?.addEventListener("abort", abort, { once: true });
+  try {
+    for (;;) {
+      signal?.throwIfAborted();
+      const { done, value } = await reader.read();
+      signal?.throwIfAborted();
+      if (done) break;
+      total += value.byteLength;
+      check(total);
+      chunks.push(value);
+    }
+  } catch (error) {
+    await reader.cancel(error).catch(() => {});
+    throw error;
+  } finally {
+    signal?.removeEventListener("abort", abort);
+    reader.releaseLock();
+  }
+  const bytes = new Uint8Array(total);
   let offset = 0;
   for (const chunk of chunks) {
-    out.set(chunk, offset);
+    bytes.set(chunk, offset);
     offset += chunk.length;
   }
-  return out;
+  return bytes;
 };
 
 /** Validate that a key doesn't contain path-traversal or absolute prefixes. */

@@ -35,7 +35,10 @@ export type UploadThingClient = {
   }) => Promise<{ files: readonly UploadThingFile[]; hasMore: boolean }>;
   uploadFiles: (
     file: UTFile,
-    options?: { contentDisposition?: "inline" | "attachment" },
+    options?: {
+      contentDisposition?: "inline" | "attachment";
+      acl?: "private" | "public-read";
+    },
   ) => Promise<{
     data: null | {
       customId: string | null;
@@ -51,6 +54,8 @@ export type UploadThingClient = {
 
 export type UploadThingBlobStoreOptions = {
   api?: UploadThingClient;
+  /** Explicit ACL; requires UploadThing app ACL overrides to be enabled. */
+  acl?: "private" | "public-read";
   label?: string;
   token?: string;
 };
@@ -107,7 +112,9 @@ export const uploadThingBlobStore = (
   return {
     delete: async (key) => {
       validateKey(key);
-      await api.deleteFiles(key, { keyType: "customId" });
+      const result = await api.deleteFiles(key, { keyType: "customId" });
+      if (!result.success)
+        throw new BlobError("UploadThing deletion failed", "PROVIDER_ERROR");
     },
     description: options.label ?? "UploadThing",
     get: async (key) => {
@@ -148,7 +155,8 @@ export const uploadThingBlobStore = (
     put: async (key, body, putOptions: PutOptions = {}) => {
       validateKey(key);
       putOptions.signal?.throwIfAborted();
-      const bytes = await collectBody(body);
+      const bytes = await collectBody(body, putOptions);
+      putOptions.signal?.throwIfAborted();
       if (
         putOptions.maxBytes !== undefined &&
         bytes.byteLength > putOptions.maxBytes
@@ -165,6 +173,7 @@ export const uploadThingBlobStore = (
           type: putOptions.contentType,
         }),
         {
+          ...(options.acl ? { acl: options.acl } : {}),
           contentDisposition: putOptions.contentDisposition?.startsWith(
             "attachment",
           )

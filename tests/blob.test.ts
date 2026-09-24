@@ -623,3 +623,21 @@ describe("cross-adapter interchangeability", () => {
     }
   });
 });
+
+test("collectBody aborts a stalled stream and releases its reader", async () => {
+  const controller = new AbortController();
+  let cancelled = false;
+  const stream = new ReadableStream<Uint8Array>({
+    cancel() {
+      cancelled = true;
+    },
+  });
+  const pending = collectBody(stream, {
+    maxBytes: 2,
+    signal: controller.signal,
+  });
+  controller.abort();
+  await expect(pending).rejects.toThrow();
+  expect(cancelled).toBe(true);
+  expect(stream.locked).toBe(false);
+});

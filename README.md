@@ -150,3 +150,10 @@ NUL bytes, and `.` / `..` path segments throw `BlobError('INVALID_KEY')`
 
 BSL-1.1 with named carveout against hosted object-storage services.
 Change date: 2030-05-31 (Apache 2.0).
+
+For private UploadThing storage, construct `uploadThingBlobStore({token, acl: "private"})`
+and enable ACL overrides in the UploadThing app settings. The adapter explicitly
+requests private uploads, enforces `maxBytes` while reading streams, and rejects
+provider deletion failures so durable cleanup can retry. Application authorization
+must precede every signed URL or download. `collectBody(body, {maxBytes, signal})`
+is also available to adapters needing bounded buffering.
