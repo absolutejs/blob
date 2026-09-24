@@ -5,6 +5,19 @@
 		{
 			"changes": [
 				{
+					"kind": "security",
+					"summary": "Independently enforce ZIP expansion, entry count, completeness and nesting limits before accepting ClamAV clean verdicts; ClamAV can otherwise silently skip oversized ZIP entries.",
+					"symbols": [
+						"createClamdBlobInspector"
+					]
+				}
+			],
+			"date": "2026-09-24",
+			"version": "0.6.2"
+		},
+		{
+			"changes": [
+				{
 					"kind": "fixed",
 					"summary": "Document shared platform hosting and verify cancellation cannot commit a clean result.",
 					"symbols": [

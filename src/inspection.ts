@@ -1,3 +1,4 @@
+import { assertBoundedZip, isZip } from "./archivePolicy";
 import { createConnection, type Socket } from "node:net";
 import type { BlobStore } from "./index";
 
@@ -136,6 +137,9 @@ export const createClamdBlobInspector = (
       }
       const reader = input.stream.getReader();
       return new Promise<BlobInspectionResult>((resolve) => {
+        let prefix = new Uint8Array(0);
+        let zipChunks: Uint8Array[] = [];
+        let captureZip: boolean | undefined;
         let settled = false,
           response = "",
           sentAll = false,
@@ -203,6 +207,25 @@ export const createClamdBlobInspector = (
               unavailable("Scanner replied before the full file was sent");
               return;
             }
+            if (verdict.verdict === "clean" && captureZip) {
+              try {
+                const archive = new Uint8Array(input.size);
+                let offset = 0;
+                for (const part of zipChunks) {
+                  archive.set(part, offset);
+                  offset += part.length;
+                }
+                assertBoundedZip(archive);
+              } catch {
+                settle({
+                  scanner: "clamd+archive-policy",
+                  verdict: "infected",
+                  signature: "Policy.ArchiveLimitsOrInvalid",
+                });
+                return;
+              }
+            }
+            zipChunks = [];
             settle(verdict);
           }
         });
@@ -215,6 +238,24 @@ export const createClamdBlobInspector = (
                 const { done, value } = await reader.read();
                 if (settled) return;
                 if (done) break;
+                if (captureZip !== false) {
+                  zipChunks.push(value);
+                  if (captureZip === undefined) {
+                    const combined = new Uint8Array(
+                      Math.min(4, prefix.length + value.length),
+                    );
+                    combined.set(prefix);
+                    combined.set(
+                      value.subarray(0, combined.length - prefix.length),
+                      prefix.length,
+                    );
+                    prefix = combined;
+                    if (prefix.length === 4) {
+                      captureZip = isZip(prefix);
+                      if (!captureZip) zipChunks = [];
+                    }
+                  }
+                }
                 received += value.byteLength;
                 if (received > maxBytes || received > input.size) {
                   unavailable("Upload exceeds the declared byte limit");

@@ -174,3 +174,11 @@ TCP protocol does not authenticate clients. Maintain fresh signatures, configure
 archive/size limits to alert rather than silently skip, and monitor the daemon.
 The inspector bounds transport time and bytes; it cannot establish signature freshness
 or guarantee detection of every malicious file. Never expose unscanned provider URLs.
+
+ClamAV can silently skip oversized ZIP entries even with `AlertExceedsMax`
+(upstream issue [#633](https://github.com/Cisco-Talos/clamav/issues/633)). The Blob
+inspector therefore independently checks ZIP/Office containers before accepting a
+clean result: 25 MiB cumulative expansion, 1,000 entries, four nested levels, and
+complete streams. Unsupported/malformed ZIPs or exceeded limits produce a blocked
+`Policy.ArchiveLimitsOrInvalid` finding. This is a file policy finding, not proof of
+malware. Non-ZIP formats continue to rely on the engine's format support and limits.
