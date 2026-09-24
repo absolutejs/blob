@@ -1,8 +1,10 @@
-# Dedicated ClamAV host
+# Private ClamAV service
 
 Run `sudo bash install.sh` on a dedicated Ubuntu 24.04 host with at least 4 GB RAM.
 This installs the distribution's ClamAV and Freshclam services, binds TCP to loopback,
-limits resource consumption, and checks loaded signature freshness every minute.
+caps clamd at 3 GB/one CPU and its updater at 1 GB/half a CPU, and checks loaded
+signature freshness every minute. The full service unit replaces Ubuntu socket
+activation; the socket is masked so requests cannot restart a stale scanner.
 No provisioner or billable resource is created by these files.
 
 Use an SSH tunnel from the application host to `127.0.0.1:3310` on the scanner host.

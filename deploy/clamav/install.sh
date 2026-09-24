@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Dedicated Ubuntu 24.04 host. clamd never listens on a public interface.
+# Ubuntu 24.04 host with verified spare memory. clamd never listens on a public interface.
 set -euo pipefail
-[[ $EUID -eq 0 ]] || { echo 'Run as root on the dedicated scanner host'; exit 1; }
+[[ $EUID -eq 0 ]] || { echo 'Run as root on the scanner host'; exit 1; }
 export DEBIAN_FRONTEND=noninteractive
 apt-get update
 apt-get install -y clamav-daemon clamav-freshclam python3
@@ -32,16 +32,7 @@ AlertEncrypted yes
 ConcurrentDatabaseReload no
 SelfCheck 60
 EOF
-mkdir -p /etc/systemd/system/clamav-daemon.service.d
-cat > /etc/systemd/system/clamav-daemon.service.d/absolute.conf <<'EOF'
-[Unit]
-Requires=
-After=network.target
-[Service]
-Restart=on-failure
-RestartSec=10
-MemoryMax=3G
-EOF
+install -m 0644 "$(dirname "$0")/clamav-daemon.service" /etc/systemd/system/clamav-daemon.service
 install -m 0755 "$(dirname "$0")/health.py" /usr/local/sbin/absolute-clam-health
 cat > /etc/systemd/system/absolute-clam-health.service <<'EOF'
 [Unit]
@@ -59,7 +50,18 @@ OnUnitActiveSec=60
 [Install]
 WantedBy=timers.target
 EOF
+mkdir -p /etc/systemd/system/clamav-freshclam.service.d
+cat > /etc/systemd/system/clamav-freshclam.service.d/absolute.conf <<'EOF'
+[Service]
+MemoryMax=1G
+CPUQuota=50%
+EOF
 # Freshclam is the distribution-managed updater; keep its signature verification enabled.
-freshclam
+systemd-run --wait --collect --property=MemoryMax=1G --property=CPUQuota=50% /usr/bin/freshclam
 systemctl daemon-reload
 systemctl enable --now clamav-freshclam.service clamav-daemon.service absolute-clam-health.timer
+
+# The distro service enables its socket through Also=. Keep socket activation
+# disabled so the freshness watchdog owns whether the daemon can run.
+systemctl disable --now clamav-daemon.socket
+systemctl mask clamav-daemon.socket
