@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, test } from "bun:test";
 import {
   uploadThingBlobStore,
   type UploadThingClient,
@@ -104,4 +104,61 @@ test("private ACL is explicit, oversized streams stop before provider upload, an
   expect(cancelled).toBe(true);
   expect(uploads).toBe(1);
   await expect(store.delete("one")).rejects.toThrow("deletion failed");
+});
+
+describe("byte ranges", () => {
+  const originalFetch = globalThis.fetch;
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+  });
+  const rangedStore = () =>
+    uploadThingBlobStore({
+      api: {
+        generateSignedURL: async () => ({
+          ufsUrl: "https://example.com/file",
+        }),
+        listFiles: async () => ({
+          files: [
+            {
+              customId: "clip.mp4",
+              key: "provider-key",
+              name: "clip.mp4",
+              size: 10,
+              status: "Uploaded",
+              uploadedAt: 123,
+            },
+          ],
+          hasMore: false,
+        }),
+      } as unknown as UploadThingClient,
+    });
+  const respondWith = (status: number) => {
+    const headers: (string | null)[] = [];
+    globalThis.fetch = Object.assign(
+      async (_input: unknown, init?: RequestInit) => {
+        headers.push(new Headers(init?.headers).get("range"));
+
+        return new Response("part", { status });
+      },
+      { preconnect: originalFetch.preconnect },
+    );
+
+    return headers;
+  };
+
+  test("asks the provider for the range", async () => {
+    const headers = respondWith(206);
+    const stream = await rangedStore().getStream("clip.mp4", {
+      range: { end: 3, start: 0 },
+    });
+    expect(headers).toEqual(["bytes=0-3"]);
+    expect(await new Response(stream).text()).toBe("part");
+  });
+
+  test("refuses a whole file sent in answer to a range", async () => {
+    respondWith(200);
+    await expect(
+      rangedStore().getStream("clip.mp4", { range: { end: 3, start: 0 } }),
+    ).rejects.toThrow("ignored the requested byte range");
+  });
 });

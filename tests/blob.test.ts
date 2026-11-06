@@ -12,6 +12,7 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import {
   BlobError,
   collectBody,
+  parseByteRange,
   validateKey,
   type BlobBody,
 } from "../src/index";
@@ -153,6 +154,14 @@ describe("localBlobStore", () => {
 
   test("head returns null for missing keys", async () => {
     expect(await store.head("nope.txt")).toBeNull();
+  });
+
+  test("getStream returns only the requested bytes", async () => {
+    await store.put("ranged.txt", "0123456789");
+    const stream = await store.getStream("ranged.txt", {
+      range: { end: 5, start: 2 },
+    });
+    expect(await new Response(stream).text()).toBe("2345");
   });
 
   test("getStream streams the body", async () => {
@@ -397,7 +406,67 @@ const makeMockS3Client = (
   return { calls, client, state: () => Object.fromEntries(store) };
 };
 
+describe("parseByteRange", () => {
+  const SIZE = 10;
+  const range = (start: number, end: number) => ({
+    kind: "range" as const,
+    range: { end, start },
+  });
+
+  test("reads the forms a video player sends", () => {
+    expect(parseByteRange("bytes=0-", SIZE)).toEqual(range(0, 9));
+    expect(parseByteRange("bytes=2-5", SIZE)).toEqual(range(2, 5));
+    expect(parseByteRange("bytes=-3", SIZE)).toEqual(range(7, 9));
+  });
+
+  test("clamps to what exists", () => {
+    expect(parseByteRange("bytes=5-999", SIZE)).toEqual(range(5, 9));
+    expect(parseByteRange("bytes=-999", SIZE)).toEqual(range(0, 9));
+  });
+
+  test("ignores what it doesn't understand, so the whole blob is served", () => {
+    for (const header of [
+      null,
+      undefined,
+      "",
+      "bytes=-",
+      "bytes=5-2",
+      "bytes=0-1,3-4",
+      "items=0-1",
+      "bytes=a-b",
+    ])
+      expect(parseByteRange(header, SIZE)).toEqual({ kind: "none" });
+  });
+
+  test("refuses a range the blob can't satisfy", () => {
+    const unsatisfiable = { kind: "unsatisfiable" as const };
+    expect(parseByteRange("bytes=10-", SIZE)).toEqual(unsatisfiable);
+    expect(parseByteRange("bytes=-0", SIZE)).toEqual(unsatisfiable);
+    expect(parseByteRange("bytes=0-", 0)).toEqual(unsatisfiable);
+    expect(parseByteRange("bytes=-5", 0)).toEqual(unsatisfiable);
+  });
+});
+
 describe("s3BlobStore", () => {
+  test("getStream asks the provider for the range", async () => {
+    const inputs: { Range?: string }[] = [];
+    const store = s3BlobStore({
+      bucket: "test",
+      client: {
+        getObject: async (input: { Range?: string }) => {
+          inputs.push(input);
+
+          return { Body: new Blob(["part"]).stream() };
+        },
+      } as unknown as Parameters<typeof s3BlobStore>[0]["client"],
+    });
+
+    await store.getStream("clip.mp4", { range: { end: 9, start: 4 } });
+    await store.getStream("clip.mp4");
+    expect(inputs[0]?.Range).toBe("bytes=4-9");
+    expect(inputs[1]).not.toHaveProperty("Range");
+  });
+
   test("put + get round-trips bytes", async () => {
     const { client, state } = makeMockS3Client();
     const store = s3BlobStore({ bucket: "test", client });

@@ -74,6 +74,51 @@ export type ListResult = {
   truncated: boolean;
 };
 
+/** An inclusive span of bytes, as HTTP counts them: 0-1 is two bytes. */
+export type ByteRange = { end: number; start: number };
+
+export type GetStreamOptions = { range?: ByteRange };
+
+export type ParsedByteRange =
+  | { kind: "none" }
+  | { kind: "range"; range: ByteRange }
+  | { kind: "unsatisfiable" };
+
+const RANGE_HEADER = /^bytes=(\d*)-(\d*)$/;
+
+/**
+ * Reads an HTTP `Range` header against a blob's size. Per RFC 9110, a header
+ * this doesn't understand, or one asking for several ranges, is ignored and
+ * the whole blob is served (`none`). `unsatisfiable` is a 416.
+ */
+export const parseByteRange = (
+  header: string | null | undefined,
+  size: number,
+): ParsedByteRange => {
+  const match = RANGE_HEADER.exec(header?.trim() ?? "");
+  if (!match) return { kind: "none" };
+  const [, first = "", last = ""] = match;
+  if (first === "" && last === "") return { kind: "none" };
+  if (first === "") {
+    const suffix = Number(last);
+    if (suffix === 0 || size === 0) return { kind: "unsatisfiable" };
+
+    return {
+      kind: "range",
+      range: { end: size - 1, start: Math.max(size - suffix, 0) },
+    };
+  }
+  const start = Number(first);
+  const end = last === "" ? size - 1 : Number(last);
+  if (last !== "" && end < start) return { kind: "none" };
+  if (start >= size) return { kind: "unsatisfiable" };
+
+  return {
+    kind: "range",
+    range: { end: Math.min(end, size - 1), start },
+  };
+};
+
 export type PresignOperation = "get" | "put";
 
 export type PresignOptions = {
@@ -103,9 +148,15 @@ export type BlobStore = {
   get: (key: string) => Promise<Uint8Array | null>;
   /**
    * Stream download — preferred for large blobs. `null` when the
-   * key doesn't exist.
+   * key doesn't exist. Pass `range` for part of the blob; it must
+   * start inside the blob, so `parseByteRange` it against `head`
+   * first. An adapter that can't honor a range throws rather than
+   * returning the whole blob.
    */
-  getStream: (key: string) => Promise<ReadableStream<Uint8Array> | null>;
+  getStream: (
+    key: string,
+    options?: GetStreamOptions,
+  ) => Promise<ReadableStream<Uint8Array> | null>;
   /** Metadata only, no body. `null` when the key doesn't exist. */
   head: (key: string) => Promise<BlobObject | null>;
   /**

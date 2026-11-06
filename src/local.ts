@@ -41,6 +41,7 @@ import {
   type BlobBody,
   type BlobObject,
   type BlobStore,
+  type GetStreamOptions,
   type ListOptions,
   type ListResult,
   type PutOptions,
@@ -238,6 +239,7 @@ export const localBlobStore = (options: LocalBlobStoreOptions): BlobStore => {
 
   const getStream = async (
     key: string,
+    streamOptions?: GetStreamOptions,
   ): Promise<ReadableStream<Uint8Array> | null> => {
     validateKey(key);
     const bodyPath = join_(options.root, key);
@@ -247,7 +249,10 @@ export const localBlobStore = (options: LocalBlobStoreOptions): BlobStore => {
       if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
       throw error;
     }
-    const nodeStream: ReadStream = createReadStream(bodyPath);
+    const nodeStream: ReadStream = createReadStream(
+      bodyPath,
+      streamOptions?.range ?? {},
+    );
     return Readable.toWeb(nodeStream) as unknown as ReadableStream<Uint8Array>;
   };
 

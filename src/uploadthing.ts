@@ -10,6 +10,7 @@ import {
 } from "./index";
 
 const DEFAULT_LIST_LIMIT = 500;
+const HTTP_PARTIAL_CONTENT = 206;
 
 type UploadThingFile = {
   customId: string | null;
@@ -127,13 +128,24 @@ export const uploadThingBlobStore = (
 
       return new Uint8Array(await response.arrayBuffer());
     },
-    getStream: async (key) => {
+    getStream: async (key, streamOptions) => {
       validateKey(key);
       if (!(await head(key))) return null;
       const { ufsUrl } = await api.generateSignedURL(key);
-      const response = await fetch(ufsUrl);
+      const range = streamOptions?.range;
+      const response = await fetch(
+        ufsUrl,
+        range
+          ? { headers: { range: `bytes=${range.start}-${range.end}` } }
+          : undefined,
+      );
       if (!response.ok || !response.body)
         throw new BlobError("UploadThing download failed", "PROVIDER_ERROR");
+      if (range && response.status !== HTTP_PARTIAL_CONTENT)
+        throw new BlobError(
+          "UploadThing ignored the requested byte range",
+          "UNSUPPORTED",
+        );
 
       return response.body;
     },
