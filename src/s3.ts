@@ -22,6 +22,7 @@ import {
   type BlobBody,
   type BlobObject,
   type BlobStore,
+  type GetStreamOptions,
   type ListOptions,
   type ListResult,
   type PresignOptions,
@@ -104,7 +105,9 @@ export type S3ClientLike = {
     input: S3PutInput,
     options?: { maxBytes?: number; signal?: AbortSignal },
   ) => Promise<S3PutOutput>;
-  getObject: (input: S3GetInput) => Promise<S3GetOutput | null>;
+  getObject: (
+    input: S3GetInput & { Range?: string },
+  ) => Promise<S3GetOutput | null>;
   headObject: (input: S3GetInput) => Promise<S3HeadOutput | null>;
   deleteObject: (input: S3GetInput) => Promise<unknown>;
   listObjectsV2: (input: S3ListInput) => Promise<S3ListOutput>;
@@ -303,10 +306,16 @@ export const s3BlobStore = (options: S3BlobStoreOptions): BlobStore => {
 
   const getStream = async (
     key: string,
+    streamOptions?: GetStreamOptions,
   ): Promise<ReadableStream<Uint8Array> | null> => {
     validateKey(key);
+    const range = streamOptions?.range;
     try {
-      const out = await client.getObject({ Bucket: bucket, Key: key });
+      const out = await client.getObject({
+        Bucket: bucket,
+        Key: key,
+        ...(range ? { Range: `bytes=${range.start}-${range.end}` } : {}),
+      });
       if (out === null) return null;
       return streamFromGetBody(out.Body);
     } catch (error) {

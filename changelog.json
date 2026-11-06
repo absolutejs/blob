@@ -5,6 +5,22 @@
 		{
 			"changes": [
 				{
+					"detail": "`getStream` takes an optional `range`, honored by the local, S3 and UploadThing adapters, and `parseByteRange` reads an HTTP `Range` header against a blob's size. An adapter that can't honor a range throws instead of returning the whole blob. Existing calls are unchanged.",
+					"kind": "added",
+					"summary": "Stream part of a blob, so video can seek",
+					"symbols": [
+						"BlobStore",
+						"S3ClientLike",
+						"parseByteRange"
+					]
+				}
+			],
+			"date": "2026-11-06",
+			"version": "0.7.0"
+		},
+		{
+			"changes": [
+				{
 					"kind": "security",
 					"summary": "Independently enforce ZIP expansion, entry count, completeness and nesting limits before accepting ClamAV clean verdicts; ClamAV can otherwise silently skip oversized ZIP entries.",
 					"symbols": [
